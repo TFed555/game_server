@@ -1,21 +1,28 @@
-import server
+from protocol import protocol
 import asyncio
 
 HOST = 'localhost'
 PORT = 5050
+FORMAT = 'utf-8'
 
 reader=None
 writer=None
 
 async def recv():
     while True:
-        data = await reader.readline()
+        prefix = int.from_bytes(await reader.readexactly(4), "big")
+        data = await reader.readexactly(prefix)
         if not data:
             break
-        print(data.decode().rstrip())
+        print(data.decode(FORMAT).rstrip())
 
 async def send():
-    pass
+    while True:
+        msg = await asyncio.to_thread(input)
+        prefix = protocol(msg)
+        writer.write(prefix)
+        writer.write(msg.encode(FORMAT))
+        await writer.drain()
 
 async def main():
     global reader, writer

@@ -2,6 +2,7 @@ import asyncio
 import logging
 import json
 from datetime import datetime
+from protocol import protocol
 from client import Client
 
 logging.basicConfig(
@@ -23,7 +24,7 @@ class Server:
         client_id = f"{client_addr[0]}:{client_addr[1]}"
         logging.info(f"[NEW CONNECTION] {client_addr} connected.")
         connected = True
-        self.clients[client_id]= Client(
+        self.clients[client_id] = Client(
                                     writer=writer, 
                                     connected_at=datetime.now(),
                                     msgs_count=0
@@ -35,21 +36,38 @@ class Server:
                 'timestamp': datetime.now().isoformat()
             }
             await self.send_message(writer, welcome_msg)
+            logging.info("Send msg to client")
             while connected:
-                data = await reader.read(1024)
+                prefix = int.from_bytes(await reader.readexactly(4), 'big')
+                data = await reader.readexactly(prefix)
+                msg = data.decode(self.__format)
                 if not data:
                     break
+                await self.process_message(writer, client_id, msg)
         except Exception as e:
             logging.error(f"Error occured with a client {client_id}: {e}")
 
         async with self.__lock:
             await self.disconnect_client(client_id)
+    
+    async def process_message(self, writer, client_id, msg):
+        self.clients[client_id].msgs_count +=1
+        logging.info(f"Message from {client_id}")
+        response = {
+            'type': 'echo',
+            'message': f"Received '{msg}'",
+            'timestamp': datetime.now().isoformat()
+        }
+        await self.send_message(writer, response)
 
     async def send_message(self, writer, msg):
         try:
             if isinstance(msg, dict):
                 msg = json.dumps(msg)
+            prefix = protocol(msg)
+            writer.write(prefix)
             writer.write(msg.encode(self.__format))
+            print(msg.encode(self.__format))
             await writer.drain()
         except Exception as e:
             logging.error(f"Error with sending a message: {e}")
