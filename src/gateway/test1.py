@@ -1,4 +1,5 @@
-from protocol import protocol
+from gateway.transport.protocol import Protocol
+from models.packet import Packet, PacketType
 import asyncio
 
 HOST = 'localhost'
@@ -10,19 +11,23 @@ writer=None
 
 async def recv():
     while True:
-        prefix = int.from_bytes(await reader.readexactly(4), "big")
-        data = await reader.readexactly(prefix)
-        if not data:
+        protocol = Protocol()
+        packet = await protocol.read_packet(reader)
+        if not packet:
             break
-        print(data.decode(FORMAT).rstrip())
+        print(packet.payload.decode(FORMAT).rstrip())
 
 async def send():
     while True:
+        protocol = Protocol()
         msg = await asyncio.to_thread(input)
-        prefix = protocol(msg)
-        writer.write(prefix)
-        writer.write(msg.encode(FORMAT))
-        await writer.drain()
+        packet = Packet(PacketType.PING, msg.encode(FORMAT))
+        await protocol.write_packet(writer, packet)
+        # msg = await asyncio.to_thread(input)
+        # prefix = protocol(msg)
+        # writer.write(prefix)
+        # writer.write(msg.encode(FORMAT))
+        # await writer.drain()
 
 async def main():
     global reader, writer
