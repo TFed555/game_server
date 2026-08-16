@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package packet;
+
+message EchoRequest { string message = 1;}
+
+message PingRequest {}
+
+message PingResponse {}
+
+message ChatRequest { string sender_id = 1; string message = 2; }
+
+message ChatMessage { string message = 1; }
+
+message LoginRequest { string message = 1; }
+
+message ClientMessage {
+    oneof payload {
+        EchoRequest echo = 1;
+        PingResponse pong = 2;
+        ChatRequest chat = 3;
+        LoginRequest login = 5;
+    }
+}
+
+message ServerMessage {
+    oneof payload {
+        EchoRequest echo = 1;
+        PingRequest ping = 2;
+        ChatMessage chat = 3;
+    }
+}

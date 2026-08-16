@@ -1,10 +1,10 @@
 from .packetparser import PacketParser
-from models.packet import PacketType
+import models.packet_pb2
 import logging
 
 class EchoParser(PacketParser):
-    def encode(self, message) -> PacketType | bytes:
-        packet_type = PacketType.PONG
+    def encode(self, message) -> models.packet_pb2.PacketType | bytes:
+        packet_type = models.packet_pb2.PacketType.PONG
         return (packet_type, message)
     
     def decode(self, payload):

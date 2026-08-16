@@ -1,21 +1,25 @@
 from gateway.handlers.echohandler import EchoHandler
-from models.packet import Packet, PacketType
+from gateway.handlers.connectionhandler import ConnectionHandler
+from models.packet_pb2 import ClientMessage
 from gateway.contexts.clientcontext import ClientContext
-from parsers.echoparser import EchoParser
 
 class Router:
     def __init__(self):
-        self.routes = {
-            PacketType.PING: (EchoParser(), EchoHandler()),
+        self.handlers = {
+            "echo": EchoHandler(),
+            "connection": ConnectionHandler()
         }
-    async def route(self, packet: Packet, ctx: ClientContext) -> Packet | None:
+    async def route(self, msg: ClientMessage, ctx: ClientContext):
         try:
-            parser, handler = self.routes[packet.type]
-            message = parser.decode(packet.payload)
-            result = await handler.handle(message, ctx)
-            if result is None:
+            kind = msg.WhichOneof("payload")
+            if kind == "pong":
+                handler = self.handlers.get("connection")
+            else:
+                handler = self.handlers.get(kind)
+            if handler is None:
                 return None
-            response_type, response = parser.encode(result)
-            return Packet(response_type, response)
+            payload = getattr(msg, kind)
+            result = await handler.handle(payload, ctx)
+            return result
         except KeyError:
-            return
+            return None

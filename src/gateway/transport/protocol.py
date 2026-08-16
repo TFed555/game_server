@@ -1,21 +1,32 @@
-from models.packet import Packet, PacketType
+from typing import TypeVar, Generic
+import models.packet_pb2 as packet_pb2
 
-class Protocol:
+T = TypeVar('T', packet_pb2.ClientMessage, packet_pb2.ServerMessage)
+K = TypeVar('K', packet_pb2.ClientMessage, packet_pb2.ServerMessage)
+
+class Protocol(Generic[T,K]):
+    def __init__(self, incoming_msg: T, outgoing_msg: K):
+        self.incoming_msg = incoming_msg
+        self.outgoing_msg = outgoing_msg
     HEADER_SIZE = 4
     MAX_PACKET_SIZE = 1 * 1024 * 1024
-    async def read_packet(self, reader) -> Packet:
+
+    async def read_packet(self, reader) -> T:
         prefix = int.from_bytes(await reader.readexactly(self.HEADER_SIZE), 'big')
         if prefix > self.MAX_PACKET_SIZE:
             raise ValueError(f"Message too big: {prefix} bytes")
         data = await reader.readexactly(prefix)
-        packet = Packet(PacketType(data[0]), data[1:])
-        return packet
+        # msg = packet_pb2.ClientMessage()
+        msg = self.incoming_msg()
+        msg.ParseFromString(data)
+        return msg
 
-    async def write_packet(self, writer, packet):
-        length = len(packet.payload) + 1
+    async def write_packet(self, writer, msg: K):
+        # print('[CLIENT] ClientMessage sending ', msg, type(msg))
+        data = msg.SerializeToString()
+        length = len(data)
         prefix = length.to_bytes(self.HEADER_SIZE, 'big')
-        data = packet.payload
-        type_value = packet.type.value.to_bytes(1, 'big')
-        data = prefix + type_value + data
+        # print('[CLIENT] is sending: ', data)
+        writer.write(prefix)
         writer.write(data)
         await writer.drain()
