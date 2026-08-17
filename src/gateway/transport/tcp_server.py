@@ -4,8 +4,10 @@ from datetime import datetime
 from gateway.transport.protocol import Protocol
 from gateway.routing.router import Router
 from models.packet_pb2 import ClientMessage, ServerMessage
-from models.client import Client
+from models.connection import Connection
 from gateway.contexts.clientcontext import ClientContext
+from gateway.managers.connectionmanager import ConnectionManager
+from gateway.managers.heartbeatmanager import HeartbeatManager
 import uuid
 
 logging.basicConfig(
@@ -22,62 +24,47 @@ class TCP_Server:
         self.__lock = asyncio.Lock()
         self.protocol = Protocol(incoming_msg=ClientMessage, outgoing_msg=ServerMessage)
         self.router = Router()
-        self.clients = {}
+        self.connections = ConnectionManager(self.protocol)
+        self.heartbeat = HeartbeatManager(self.connections)
+        self.heartbeat_task = asyncio.Task
 
-    async def heartbeat_loop(self):
-        while True:
-            await asyncio.sleep(5)
-            for i in self.clients.values():
-                packet = ServerMessage()
-                packet.ping.SetInParent()
-                await self.protocol.write_packet(i.writer, packet)
 
-    async def receive_packets_loop(self, client):
-        ctx = ClientContext(client_id=client.id, last_pong=asyncio.get_running_loop().time())
+    async def handle_connection(self, conn):
         while True:
-            packet = await self.protocol.read_packet(client.reader)
+            packet = await self.protocol.read_packet(conn.reader)
             if not packet:
                 break
             logging.info("Msg received")
-            if packet is not None:  
-                response = await self.router.route(packet, ctx)
+            if packet is not None:
+                conn.last_act = datetime.now()
+                response = await self.router.route(packet, conn)
                 if response is not None:
-                    await self.protocol.write_packet(client.writer, response)
+                    await self.protocol.write_packet(conn.writer, response)
 
     async def open_connection(self, reader, writer):
         client_id = str(uuid.uuid4())
-        self.clients[client_id] = Client(
-                            id=client_id,
-                            writer=writer,
-                            reader=reader,
-                            pending_request=None,
-                            chatter_id=None,
-                            connected_at=datetime.now(),
-                            msgs_count=0,
-                            last_pong=datetime.now()
-                        )
+        conn = Connection(id=client_id, 
+                          writer=writer, 
+                          reader=reader,
+                          connected_at=datetime.now(), 
+                          last_act=datetime.now(),
+                          task=asyncio.current_task())
+        self.connections.add(client_id, conn)
         logging.info(f"[CONNECTION] Client {client_id[:5]} connected")
-
+        # ctx = ClientContext(connection_id=client_id,
+        #                     last_act=datetime.now())
         try:
-            await self.receive_packets_loop(self.clients[client_id])
+            await self.handle_connection(conn)
         except Exception as e:
             logging.error(f"Error occurred with a client {client_id[:5]}: {e}")
         finally:
-            await self.close_connection(client_id=client_id)
+            await self.close_connection(client_id=client_id, writer=writer)
 
-    async def close_connection(self, client_id):
-        if client_id in self.clients.keys():
-            try:
-                self.clients[client_id].writer.close()
-                await self.clients[client_id].writer.wait_closed()
-            except Exception as e:
-                logging.error(f"[CLIENT]{client_id} error with disconnection: {e}")
-            del self.clients[client_id]
-            logging.info(f"[CLIENT]{client_id} was disconnected")
-
-    async def broadcast_message(self, msg):
-        for i in self.clients.values():
-            await self.protocol.write_packet(i.writer, msg)
+    async def close_connection(self, client_id, writer):
+        self.connections.remove(client_id=client_id)
+        writer.close()
+        await writer.wait_closed()
+        logging.info(f"[CLIENT]{client_id} was disconnected")
 
     async def start(self):
         server = await asyncio.start_server(
@@ -86,6 +73,10 @@ class TCP_Server:
             self.__port
         )
         logging.info(f"[LISTENING] Server is listening on {self.__host}")
-        await asyncio.create_task(self.heartbeat_loop())
+        try:
+            self.heartbeat_task = asyncio.create_task(self.heartbeat.run())
+        except Exception as e:
+            logging.error(f"[HEARTBEAT] Task was dropped with exceptiob {e}")
+
         async with server:
             await server.serve_forever()

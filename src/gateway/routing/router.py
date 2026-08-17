@@ -2,24 +2,24 @@ from gateway.handlers.echohandler import EchoHandler
 from gateway.handlers.connectionhandler import ConnectionHandler
 from models.packet_pb2 import ClientMessage
 from gateway.contexts.clientcontext import ClientContext
+from models.connection import Connection
 
 class Router:
     def __init__(self):
         self.handlers = {
             "echo": EchoHandler(),
-            "connection": ConnectionHandler()
+            "pong": ConnectionHandler(),
         }
-    async def route(self, msg: ClientMessage, ctx: ClientContext):
+    async def route(self, msg: ClientMessage, conn: Connection):
         try:
             kind = msg.WhichOneof("payload")
-            if kind == "pong":
-                handler = self.handlers.get("connection")
-            else:
-                handler = self.handlers.get(kind)
+            if kind is None:
+                raise ValueError
+            handler = self.handlers.get(kind)
             if handler is None:
-                return None
+                raise KeyError
             payload = getattr(msg, kind)
-            result = await handler.handle(payload, ctx)
+            result = await handler.handle(payload, conn)
             return result
-        except KeyError:
+        except (ValueError, KeyError):
             return None

@@ -1,7 +1,8 @@
 from .packethandler import PacketHandler
+from datetime import datetime
 import asyncio
 
 class ConnectionHandler(PacketHandler):
-    async def handle(self, packet, ctx):
-        ctx.last_pong = asyncio.get_running_loop().time()
+    async def handle(self, msg, conn):
+        conn.last_act = datetime.now()
         return

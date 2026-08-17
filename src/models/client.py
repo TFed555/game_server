@@ -5,7 +5,7 @@ from typing import Optional
 
 @dataclass
 class Client:
-    id: str
+    id:str
     writer:StreamWriter
     reader:StreamReader
     connected_at:datetime
