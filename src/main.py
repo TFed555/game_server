@@ -2,9 +2,9 @@ from gateway.transport.tcp_server import TCP_Server
 import asyncio
 
 def main():
-    s = TCP_Server()
+    gatewayServer = TCP_Server()
     try:
-        asyncio.run(s.start())
+        asyncio.run(gatewayServer.start())
     except KeyboardInterrupt:
         print('\n Server is stopping...')
 

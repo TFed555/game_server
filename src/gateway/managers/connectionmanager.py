@@ -1,5 +1,5 @@
-from models.connection import Connection
-from models.packet_pb2 import ServerMessage
+from gateway.models.connection import Connection
+from proto.packet_pb2 import ServerMessage
 
 class ConnectionManager:
     def __init__(self, protocol):

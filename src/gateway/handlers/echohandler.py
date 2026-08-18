@@ -1,6 +1,6 @@
 from .packethandler import PacketHandler
-from models.packet_pb2 import ServerMessage
-from models.connection import Connection
+from proto.packet_pb2 import ServerMessage
+from gateway.models.connection import Connection
 from gateway.contexts.clientcontext import ClientContext
 
 FORMAT = 'utf-8'

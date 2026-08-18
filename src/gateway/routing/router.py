@@ -1,14 +1,16 @@
 from gateway.handlers.echohandler import EchoHandler
 from gateway.handlers.connectionhandler import ConnectionHandler
-from models.packet_pb2 import ClientMessage
+from gateway.handlers.loginhandler import LoginHandler
+from proto.packet_pb2 import ClientMessage
 from gateway.contexts.clientcontext import ClientContext
-from models.connection import Connection
+from gateway.models.connection import Connection
 
 class Router:
     def __init__(self):
         self.handlers = {
             "echo": EchoHandler(),
             "pong": ConnectionHandler(),
+            "login": LoginHandler()
         }
     async def route(self, msg: ClientMessage, conn: Connection):
         try:

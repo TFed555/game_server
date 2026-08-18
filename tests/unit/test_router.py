@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from models.packet_pb2 import ClientMessage
-from models.connection import Connection
+from gateway.models.connection import Connection
 from gateway.routing.router import Router
 from unittest.mock import Mock, AsyncMock
 from datetime import datetime

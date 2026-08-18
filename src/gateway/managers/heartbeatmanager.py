@@ -1,5 +1,5 @@
 from gateway.managers.connectionmanager import ConnectionManager
-from models.packet_pb2 import ServerMessage
+from proto.packet_pb2 import ServerMessage
 import asyncio
 from datetime import datetime
 import logging

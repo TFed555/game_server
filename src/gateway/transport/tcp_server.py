@@ -3,8 +3,8 @@ import logging
 from datetime import datetime
 from gateway.transport.protocol import Protocol
 from gateway.routing.router import Router
-from models.packet_pb2 import ClientMessage, ServerMessage
-from models.connection import Connection
+from proto.packet_pb2 import ClientMessage, ServerMessage
+from gateway.models.connection import Connection
 from gateway.contexts.clientcontext import ClientContext
 from gateway.managers.connectionmanager import ConnectionManager
 from gateway.managers.heartbeatmanager import HeartbeatManager

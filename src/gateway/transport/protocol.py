@@ -1,5 +1,5 @@
 from typing import TypeVar, Generic
-import models.packet_pb2 as packet_pb2
+import proto.packet_pb2 as packet_pb2
 
 T = TypeVar('T', packet_pb2.ClientMessage, packet_pb2.ServerMessage)
 K = TypeVar('K', packet_pb2.ClientMessage, packet_pb2.ServerMessage)
